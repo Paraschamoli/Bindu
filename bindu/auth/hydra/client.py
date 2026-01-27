@@ -5,13 +5,11 @@ This client handles communication with Ory Hydra's Admin API for token operation
 
 from __future__ import annotations as _annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import quote
 
-import aiohttp
-
 from bindu.common.models import TokenIntrospectionResult, OAuthClient
+from bindu.utils.http_client import AsyncHTTPClient
 from bindu.utils.logging import get_logger
 
 logger = get_logger("bindu.auth.hydra_client")
@@ -44,10 +42,18 @@ class HydraClient:
         self.public_url = (
             public_url.rstrip("/") if public_url else admin_url.replace("4445", "4444")
         )
-        self.timeout = timeout
-        self.verify_ssl = verify_ssl
-        self.max_retries = max_retries
-        self._session: Optional[aiohttp.ClientSession] = None
+        
+        # Use the reusable HTTP client
+        self._http_client = AsyncHTTPClient(
+            base_url=self.admin_url,
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+            max_retries=max_retries,
+            default_headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+            },
+        )
 
         logger.debug(
             f"Hydra client initialized: admin={admin_url}, public={self.public_url}"
@@ -55,88 +61,16 @@ class HydraClient:
 
     async def __aenter__(self) -> "HydraClient":
         """Async context manager entry."""
-        await self._ensure_session()
+        await self._http_client._ensure_session()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.close()
 
-    async def _ensure_session(self) -> None:
-        """Ensure aiohttp session exists."""
-        if self._session is None or self._session.closed:
-            connector = aiohttp.TCPConnector(ssl=self.verify_ssl)
-            timeout = aiohttp.ClientTimeout(total=self.timeout)
-            self._session = aiohttp.ClientSession(
-                connector=connector,
-                timeout=timeout,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json",
-                },
-            )
-
     async def close(self) -> None:
-        """Close the aiohttp session."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
-
-    async def _request_with_retry(
-        self, method: str, endpoint: str, **kwargs
-    ) -> aiohttp.ClientResponse:
-        """Make HTTP request with retry logic.
-
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint
-            **kwargs: Additional arguments for aiohttp request
-
-        Returns:
-            HTTP response
-
-        Raises:
-            aiohttp.ClientError: If request fails after all retries
-        """
-        await self._ensure_session()
-        url = f"{self.admin_url}{endpoint}"
-
-        for attempt in range(self.max_retries):
-            try:
-                async with self._session.request(method, url, **kwargs) as response:
-                    if response.status >= 500 and attempt < self.max_retries - 1:
-                        wait_time = 2**attempt  # Exponential backoff
-                        logger.warning(
-                            f"Server error {response.status}, retrying in {wait_time}s..."
-                        )
-                        await asyncio.sleep(wait_time)
-                        continue
-
-                    if response.status == 404:
-                        raise aiohttp.ClientResponseError(
-                            request_info=response.request_info,
-                            history=response.history,
-                            status=404,
-                            message="Endpoint not found",
-                        )
-
-                    # Read response body before context manager closes
-                    response_data = await response.read()
-                    # Store data in response for later access
-                    response._body = response_data
-                    return response
-
-            except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as e:
-                if attempt < self.max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(
-                        f"Connection error: {e}, retrying in {wait_time}s..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    raise
-
-        raise aiohttp.ClientError(f"Request failed after {self.max_retries} retries")
+        """Close the HTTP client session."""
+        await self._http_client.close()
 
     async def introspect_token(self, token: str) -> Dict[str, Any]:
         """Introspect OAuth2 token using Hydra Admin API.
@@ -149,7 +83,6 @@ class HydraClient:
 
         Raises:
             ValueError: If token introspection fails
-            aiohttp.ClientError: If HTTP request fails
         """
         data = {
             "token": token,
@@ -157,9 +90,7 @@ class HydraClient:
         }
 
         try:
-            response = await self._request_with_retry(
-                "POST", "/admin/oauth2/introspect", data=data
-            )
+            response = await self._http_client.post("/admin/oauth2/introspect", data=data)
 
             if response.status != 200:
                 error_text = await response.text()
@@ -175,8 +106,8 @@ class HydraClient:
 
             return result_data
 
-        except aiohttp.ClientError as e:
-            logger.error(f"HTTP error during token introspection: {e}")
+        except Exception as e:
+            logger.error(f"Error during token introspection: {e}")
             raise ValueError(f"Failed to introspect token: {str(e)}")
 
     async def create_oauth_client(self, client_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -189,9 +120,7 @@ class HydraClient:
             Created client information
         """
         try:
-            response = await self._request_with_retry(
-                "POST", "/admin/clients", json=client_data
-            )
+            response = await self._http_client.post("/admin/clients", json=client_data)
 
             if response.status not in (200, 201):
                 error_text = await response.text()
@@ -199,7 +128,7 @@ class HydraClient:
 
             return await response.json()
 
-        except aiohttp.ClientError as e:
+        except Exception as e:
             logger.error(f"Failed to create OAuth client: {e}")
             raise
 
@@ -215,9 +144,7 @@ class HydraClient:
         try:
             # URL-encode client_id to handle DIDs with colons and special characters
             encoded_client_id = quote(client_id, safe="")
-            response = await self._request_with_retry(
-                "GET", f"/admin/clients/{encoded_client_id}"
-            )
+            response = await self._http_client.get(f"/admin/clients/{encoded_client_id}")
 
             if response.status == 200:
                 return await response.json()
@@ -227,11 +154,9 @@ class HydraClient:
                 error_text = await response.text()
                 raise ValueError(f"Failed to get OAuth client: {error_text}")
 
-        except aiohttp.ClientResponseError as e:
-            if e.status == 404:
+        except Exception as e:
+            if hasattr(e, 'status') and e.status == 404:
                 return None
-            raise
-        except aiohttp.ClientError as e:
             logger.error(f"Failed to get OAuth client: {e}")
             raise
 
@@ -248,8 +173,8 @@ class HydraClient:
             List of OAuth2 clients
         """
         try:
-            response = await self._request_with_retry(
-                "GET", f"/admin/clients?limit={limit}&offset={offset}"
+            response = await self._http_client.get(
+                f"/admin/clients?limit={limit}&offset={offset}"
             )
 
             if response.status != 200:
@@ -258,7 +183,7 @@ class HydraClient:
 
             return await response.json()
 
-        except aiohttp.ClientError as e:
+        except Exception as e:
             logger.error(f"Failed to list OAuth clients: {e}")
             raise
 
@@ -274,9 +199,7 @@ class HydraClient:
         try:
             # URL-encode client_id to handle DIDs with colons and special characters
             encoded_client_id = quote(client_id, safe="")
-            response = await self._request_with_retry(
-                "DELETE", f"/admin/clients/{encoded_client_id}"
-            )
+            response = await self._http_client.delete(f"/admin/clients/{encoded_client_id}")
 
             if response.status in (200, 204):
                 return True
@@ -286,11 +209,9 @@ class HydraClient:
                 error_text = await response.text()
                 raise ValueError(f"Failed to delete OAuth client: {error_text}")
 
-        except aiohttp.ClientResponseError as e:
-            if e.status == 404:
+        except Exception as e:
+            if hasattr(e, 'status') and e.status == 404:
                 return False
-            raise
-        except aiohttp.ClientError as e:
             logger.error(f"Failed to delete OAuth client: {e}")
             raise
 
@@ -301,9 +222,9 @@ class HydraClient:
             True if healthy, False otherwise
         """
         try:
-            response = await self._request_with_retry("GET", "/admin/health/ready")
+            response = await self._http_client.get("/admin/health/ready")
             return response.status == 200
-        except aiohttp.ClientError:
+        except Exception:
             return False
 
     async def get_jwks(self) -> Dict[str, Any]:
@@ -313,7 +234,7 @@ class HydraClient:
             JWKS data
         """
         try:
-            response = await self._request_with_retry("GET", "/.well-known/jwks.json")
+            response = await self._http_client.get("/.well-known/jwks.json")
 
             if response.status != 200:
                 error_text = await response.text()
@@ -321,7 +242,7 @@ class HydraClient:
 
             return await response.json()
 
-        except aiohttp.ClientError as e:
+        except Exception as e:
             logger.error(f"Failed to get JWKS: {e}")
             raise
 
@@ -337,12 +258,10 @@ class HydraClient:
         data = {"token": token}
 
         try:
-            response = await self._request_with_retry(
-                "POST", "/admin/oauth2/revoke", data=data
-            )
+            response = await self._http_client.post("/admin/oauth2/revoke", data=data)
 
             return response.status in (200, 204)
 
-        except aiohttp.ClientError as e:
+        except Exception as e:
             logger.error(f"Failed to revoke token: {e}")
             return False

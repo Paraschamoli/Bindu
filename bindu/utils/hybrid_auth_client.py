@@ -9,11 +9,11 @@ from __future__ import annotations as _annotations
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
-
-import aiohttp
+from urllib.parse import urlparse
 
 from bindu.auth.hydra.registration import load_agent_credentials
 from bindu.utils.did_signature import create_signed_request_headers
+from bindu.utils.http_client import AsyncHTTPClient
 from bindu.utils.logging import get_logger
 from bindu.utils.token_utils import get_client_credentials_token
 
@@ -93,6 +93,11 @@ class HybridAuthClient:
         if not self.access_token:
             await self.refresh_token()
 
+        # Parse URL to get base and path
+        parsed = urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path or "/"
+
         # Create signed request headers
         body_str = json.dumps(data)
         auth_headers = create_signed_request_headers(
@@ -107,32 +112,28 @@ class HybridAuthClient:
             auth_headers.update(headers)
 
         # Make request
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url, headers=auth_headers, data=body_str
-            ) as response:
-                if response.status == 401:
-                    # Token might be expired, refresh and retry
-                    logger.info("Token expired, refreshing...")
-                    await self.refresh_token()
+        async with AsyncHTTPClient(base_url=base_url) as client:
+            response = await client.post(path, headers=auth_headers, data=body_str)
+            
+            if response.status == 401:
+                # Token might be expired, refresh and retry
+                logger.info("Token expired, refreshing...")
+                await self.refresh_token()
 
-                    # Update headers with new token
-                    auth_headers = create_signed_request_headers(
-                        body=body_str,
-                        did=self.credentials.client_id,
-                        did_extension=self.did_extension,
-                        bearer_token=self.access_token,
-                    )
-                    if headers:
-                        auth_headers.update(headers)
+                # Update headers with new token
+                auth_headers = create_signed_request_headers(
+                    body=body_str,
+                    did=self.credentials.client_id,
+                    did_extension=self.did_extension,
+                    bearer_token=self.access_token,
+                )
+                if headers:
+                    auth_headers.update(headers)
 
-                    # Retry request
-                    async with session.post(
-                        url, headers=auth_headers, data=body_str
-                    ) as retry_response:
-                        return await retry_response.json()
+                # Retry request
+                response = await client.post(path, headers=auth_headers, data=body_str)
 
-                return await response.json()
+            return await response.json()
 
     async def get(
         self,
@@ -152,6 +153,11 @@ class HybridAuthClient:
         if not self.access_token:
             await self.refresh_token()
 
+        # Parse URL to get base and path
+        parsed = urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path or "/"
+
         # For GET requests, we still sign an empty body
         auth_headers = create_signed_request_headers(
             body="",
@@ -165,19 +171,18 @@ class HybridAuthClient:
             auth_headers.update(headers)
 
         # Make request
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=auth_headers) as response:
-                if response.status == 401:
-                    # Token might be expired, refresh and retry
-                    logger.info("Token expired, refreshing...")
-                    await self.refresh_token()
+        async with AsyncHTTPClient(base_url=base_url) as client:
+            response = await client.get(path, headers=auth_headers)
+            
+            if response.status == 401:
+                # Token might be expired, refresh and retry
+                logger.info("Token expired, refreshing...")
+                await self.refresh_token()
 
-                    auth_headers["Authorization"] = f"Bearer {self.access_token}"
+                auth_headers["Authorization"] = f"Bearer {self.access_token}"
+                response = await client.get(path, headers=auth_headers)
 
-                    async with session.get(url, headers=auth_headers) as retry_response:
-                        return await retry_response.json()
-
-                return await response.json()
+            return await response.json()
 
 
 async def make_authenticated_request(

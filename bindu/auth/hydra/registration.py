@@ -13,58 +13,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from bindu.auth.hydra.client import HydraClient
+from bindu.common.models import AgentCredentials
 from bindu.settings import app_settings
 from bindu.utils.logging import get_logger
 
 logger = get_logger("bindu.auth.hydra_registration")
-
-
-class AgentCredentials:
-    """Agent OAuth credentials storage."""
-
-    def __init__(
-        self,
-        agent_id: str,
-        client_id: str,
-        client_secret: str,
-        created_at: str,
-        scopes: list[str],
-    ):
-        """Initialize agent credentials.
-
-        Args:
-            agent_id: Unique agent identifier
-            client_id: OAuth client ID
-            client_secret: OAuth client secret
-            created_at: ISO timestamp of creation
-            scopes: List of OAuth scopes
-        """
-        self.agent_id = agent_id
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.created_at = created_at
-        self.scopes = scopes
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return {
-            "agent_id": self.agent_id,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "created_at": self.created_at,
-            "scopes": self.scopes,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentCredentials":
-        """Create from dictionary."""
-        return cls(
-            agent_id=data["agent_id"],
-            client_id=data["client_id"],
-            client_secret=data["client_secret"],
-            created_at=data["created_at"],
-            scopes=data.get("scopes", []),
-        )
 
 
 def save_agent_credentials(
@@ -226,7 +179,7 @@ async def register_agent_in_hydra(
                     "did": did,
                     "public_key": public_key,
                     "key_type": key_type,
-                    "verification_method": "Ed25519VerificationKey2020"
+                    "verification_method": app_settings.did.verification_key_type
                     if key_type
                     else None,
                     "registered_at": datetime.now(timezone.utc).isoformat(),

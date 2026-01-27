@@ -256,10 +256,8 @@ async def get_token_endpoint(request: Request) -> JSONResponse:
             )
 
         # Get token from Hydra
-        import aiohttp
         import base64
-
-        token_url = f"{app_settings.hydra.public_url}/oauth2/token"
+        from bindu.utils.http_client import http_client
 
         # Prepare basic auth
         auth_string = f"{client_id}:{client_secret}"
@@ -276,20 +274,25 @@ async def get_token_endpoint(request: Request) -> JSONResponse:
             "scope": scope,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(token_url, headers=headers, data=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return JSONResponse(result, status_code=200)
-                else:
-                    error_text = await response.text()
-                    logger.error(
-                        f"Failed to get token: {response.status} - {error_text}"
-                    )
-                    return JSONResponse(
-                        {"error": "Failed to get token", "details": error_text},
-                        status_code=response.status,
-                    )
+        async with http_client(
+            base_url=app_settings.hydra.public_url,
+            verify_ssl=app_settings.hydra.verify_ssl,
+            timeout=app_settings.hydra.timeout,
+        ) as client:
+            response = await client.post("/oauth2/token", headers=headers, data=data)
+            
+            if response.status == 200:
+                result = await response.json()
+                return JSONResponse(result, status_code=200)
+            else:
+                error_text = await response.text()
+                logger.error(
+                    f"Failed to get token: {response.status} - {error_text}"
+                )
+                return JSONResponse(
+                    {"error": "Failed to get token", "details": error_text},
+                    status_code=response.status,
+                )
 
     except Exception as e:
         logger.error(f"Failed to get token: {e}")

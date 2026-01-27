@@ -291,3 +291,38 @@ class OAuthClient:
     scope: str = "openid offline"
     token_endpoint_auth_method: str = "client_secret_basic"
     metadata: dict[str, Any] | None = None
+
+
+@dataclass
+class AgentCredentials:
+    """Agent OAuth credentials storage.
+    
+    Stores OAuth client credentials for a Bindu agent registered in Hydra.
+    """
+
+    agent_id: str
+    client_id: str
+    client_secret: str
+    created_at: str
+    scopes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "agent_id": self.agent_id,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "created_at": self.created_at,
+            "scopes": self.scopes,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AgentCredentials":
+        """Create from dictionary."""
+        return cls(
+            agent_id=data["agent_id"],
+            client_id=data["client_id"],
+            client_secret=data["client_secret"],
+            created_at=data["created_at"],
+            scopes=data.get("scopes", []),
+        )

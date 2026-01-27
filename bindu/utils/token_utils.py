@@ -9,10 +9,9 @@ from __future__ import annotations as _annotations
 import base64
 from typing import Optional
 
-import aiohttp
-
 from bindu.auth.hydra.registration import load_agent_credentials
 from bindu.settings import app_settings
+from bindu.utils.http_client import http_client
 from bindu.utils.logging import get_logger
 
 logger = get_logger("bindu.utils.token_utils")
@@ -32,8 +31,6 @@ async def get_client_credentials_token(
         Token response dict with access_token, token_type, expires_in
     """
     try:
-        token_url = f"{app_settings.hydra.public_url}/oauth2/token"
-
         # Prepare basic auth
         auth_string = f"{client_id}:{client_secret}"
         auth_bytes = auth_string.encode("utf-8")
@@ -51,20 +48,23 @@ async def get_client_credentials_token(
         if scope:
             data["scope"] = scope
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                token_url, headers=headers, data=data, ssl=app_settings.hydra.verify_ssl
-            ) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.debug(f"Token obtained for client: {client_id}")
-                    return result
-                else:
-                    error_text = await response.text()
-                    logger.error(
-                        f"Failed to get token for {client_id}: {response.status} - {error_text}"
-                    )
-                    return None
+        async with http_client(
+            base_url=app_settings.hydra.public_url,
+            verify_ssl=app_settings.hydra.verify_ssl,
+            timeout=app_settings.hydra.timeout,
+        ) as client:
+            response = await client.post("/oauth2/token", headers=headers, data=data)
+            
+            if response.status == 200:
+                result = await response.json()
+                logger.debug(f"Token obtained for client: {client_id}")
+                return result
+            else:
+                error_text = await response.text()
+                logger.error(
+                    f"Failed to get token for {client_id}: {response.status} - {error_text}"
+                )
+                return None
 
     except Exception as e:
         logger.error(f"Failed to get client credentials token: {e}")
