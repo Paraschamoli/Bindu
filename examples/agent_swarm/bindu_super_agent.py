@@ -5,12 +5,28 @@ from examples.agent_swarm.orchestrator import Orchestrator
 orchestrator = Orchestrator()
 
 
-def handler(messages: str) -> str:
+def handler(messages: list[dict[str, str]]) -> str:
     """
     Main handler for the multi-agent swarm.
+    Bindu passes a conversation message list.
+    We extract the latest user query and run the swarm.
     """
-    result = orchestrator.run(messages)
-    return result
+
+    if not messages:
+        return "No input received."
+
+    try:
+        user_input = messages[-1].get("content", "")
+
+        if not user_input:
+            return "Empty input provided."
+
+        result = orchestrator.run(user_input)
+        return result
+
+    except Exception as e:
+        return f"Swarm execution failed: {str(e)}"
+
 
 
 if __name__ == "__main__":
