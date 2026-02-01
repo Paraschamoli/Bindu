@@ -185,6 +185,9 @@ examples/.bindu/*
 examples/.bindu/private.pem
 examples/.bindu/public.pem
 
+examples/agent_swarm/.bindu/private.pem
+examples/agent_swarm/.bindu/public.pem
+
 # Pebbling keys (DID private/public keys)
 examples/.pebbling/*
 **/.pebbling/private.pem

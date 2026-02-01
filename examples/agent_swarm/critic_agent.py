@@ -1,13 +1,13 @@
 from agno.agent import Agent
-from agno.models.groq import Groq
+from agno.models.google import Gemini
 import os
 
 def build_critic_agent():
     return Agent(
         name="Critic",
-        model=Groq(
-            id="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
+        model=Gemini(
+            id="model-2.5-flash",
+            api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.1
         ),
         description=(

@@ -211,9 +211,11 @@ pip install -e .
 ```bash
 # Windows
 setx OPENAI_API_KEY "your_openai_key"
+setx GOOGLE_API_KEY "your_gemini_key"
 
 # macOS / Linux
 export OPENAI_API_KEY="your_openai_key"
+export GOOGLE_API_KEY="your_gemini_key"
 ```
 
 ### OpenRouter (Optional)

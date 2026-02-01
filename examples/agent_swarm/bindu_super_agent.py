@@ -1,6 +1,8 @@
 from bindu.penguin.bindufy import bindufy
 from examples.agent_swarm.orchestrator import Orchestrator
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+load_dotenv()
 
 
 orchestrator = Orchestrator()

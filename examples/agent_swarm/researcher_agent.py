@@ -6,16 +6,12 @@ import os
 def build_research_agent():
     return Agent(
         name="Researcher",
-        # model=Gemini(
-        #     id="gemini-2.5-flash",
-        #     api_key=os.getenv("GOOGLE_API_KEY"),
-        #     temperature=0.3  # Slightly higher for creative research
-        # ),
-        model=Groq(
-            id="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1
+        model=Gemini(
+            id="gemini-2.5-flash",
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            temperature=0.3  # Slightly higher for creative research
         ),
+       
         description=(
             "You are a deep research agent with expertise across multiple domains. "
             "Your task is to explore topics thoroughly and provide comprehensive, accurate information.\n\n"

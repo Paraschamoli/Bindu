@@ -7,15 +7,10 @@ import os
 def build_reflection_agent():
     return Agent(
         name="Reflection Agent",
-        # model=Gemini(
-        #     id="gemini-2.5-flash",
-        #     api_key=os.getenv("GOOGLE_API_KEY"),
-        #     temperature=0
-        # ),
-        model=Groq(
-            id="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1
+        model=Gemini(
+            id="gemini-2.5-flash",
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            temperature=0
         ),
         description="""You are a strict JSON-only quality evaluation agent.
 

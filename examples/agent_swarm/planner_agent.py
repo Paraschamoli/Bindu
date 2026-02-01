@@ -1,21 +1,15 @@
 from agno.agent import Agent
 from agno.models.google import Gemini
-from agno.models.groq import Groq
 import os
 
 
 def build_planner_agent():
     return Agent(
         name="Planner Agent",
-        # model=Gemini(
-        #     id="gemini-2.5-flash",  # Fast and good at following instructions
-        #     api_key=os.getenv("GOOGLE_API_KEY"),
-        #     temperature=0
-        # ),
-        model=Groq(
-            id="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1
+        model=Gemini(
+            id="gemini-2.5-flash",  # Fast and good at following instructions
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            temperature=0
         ),
         description="""You are a strict JSON-only planning agent.
 

@@ -6,15 +6,10 @@ import os
 def build_summarizer_agent():
     return Agent(
         name="Summarizer",
-        # model=Gemini(
-        #     id="gemini-2.5-flash",
-        #     api_key=os.getenv("GOOGLE_API_KEY"),
-        #     temperature=0.2  # Low but allows slight creativity for clarity
-        # ),
-        model=Groq(
-            id="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1
+        model=Gemini(
+            id="gemini-2.5-flash",
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            temperature=0.2  # Low but allows slight creativity for clarity
         ),
         description=(
             "You are a professional technical summarizer with expertise in distilling complex information.\n\n"
