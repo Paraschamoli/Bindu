@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bindu Agent Chat</title>
+    <link rel="stylesheet" href="./styles/main.css">
+    <link rel="stylesheet" href="./styles/components.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <h1>Bindu 🌻</h1>
+                </div>
+                <div class="agent-info">
+                    <span id="agent-name">Loading...</span>
+                    <span id="agent-status" class="status-dot online"></span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="theme-toggle" class="icon-btn" title="Toggle theme">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <button id="settings-btn" class="icon-btn" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="m12 1 1.27 2.22L16 2l.78 1.63L19 4l-.27 1.55L20 7l-1.27 1.27L20 10l-1.22.78L18 13l-1.55-.27L15 14l-1.27-1.27L12 14l-.78-1.22L9 12l.27-1.55L8 9l1.27-1.27L8 6l1.22-.78L10 3l1.55.27L13 2l1.27 1.27z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-container">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h2>Conversations</h2>
+                    <button id="new-chat-btn" class="btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        New Chat
+                    </button>
+                </div>
+                <div class="conversations-list" id="conversations-list">
+                    <div class="loading">Loading conversations...</div>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <main class="chat-area">
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="chat" onclick="window.binduUI.switchTab('chat')">
+                        💬 Chat
+                    </button>
+                    <button class="tab-btn" data-tab="info" onclick="window.binduUI.switchTab('info')">
+                        ℹ️ Info
+                    </button>
+                    <button class="tab-btn" data-tab="skills" onclick="window.binduUI.switchTab('skills')">
+                        🔧 Skills
+                    </button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Chat Tab -->
+                    <div class="tab-pane active" id="chat-tab">
+                        <div class="chat-container">
+                            <div class="chat-messages" id="chat-messages">
+                                <div class="welcome-message">
+                                    <h2>Welcome to Bindu Agent Chat</h2>
+                                    <p>Start a conversation with your AI agent. Select an existing conversation from the sidebar or create a new one.</p>
+                                    <div class="example-prompts">
+                                        <h3>Try these examples:</h3>
+                                        <div class="prompt-card" data-prompt="Hello! Can you introduce yourself?">
+                                            <h4>👋 Introduction</h4>
+                                            <p>Hello! Can you introduce yourself?</p>
+                                        </div>
+                                        <div class="prompt-card" data-prompt="What can you help me with?">
+                                            <h4>🔍 Capabilities</h4>
+                                            <p>What can you help me with?</p>
+                                        </div>
+                                        <div class="prompt-card" data-prompt="Show me your skills and abilities">
+                                            <h4>⚡ Skills</h4>
+                                            <p>Show me your skills and abilities</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Input Area -->
+                            <div class="input-container">
+                                <div class="input-wrapper">
+                                    <textarea 
+                                        id="message-input" 
+                                        placeholder="Type your message..." 
+                                        rows="1"
+                                        maxlength="4000"
+                                    ></textarea>
+                                    <button id="send-btn" class="send-btn" disabled>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="input-info">
+                                    <span id="char-count">0 / 4000</span>
+                                    <span class="shortcuts">Press Enter to send, Shift+Enter for new line</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Info Tab -->
+                    <div class="tab-pane" id="info-tab">
+                        <div class="info-content">
+                            <h2>Agent Information</h2>
+                            <div id="agent-details">
+                                <div class="loading">Loading agent information...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skills Tab -->
+                    <div class="tab-pane" id="skills-tab">
+                        <div class="skills-content" id="skills-content">
+                            <div class="loading">Loading skills...</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Settings</h3>
+                    <button class="modal-close" id="close-settings">&times;</button>
+                </div>
+                <div class="modal-body" id="settings-modal-body">
+                    <div class="setting-group">
+                        <label for="agent-url">Agent URL:</label>
+                        <input type="text" id="agent-url" value="/api" />
+                    </div>
+                    <div class="setting-group">
+                        <label for="auth-token">Auth Token (optional):</label>
+                        <input type="password" id="auth-token" placeholder="Enter JWT token" />
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="auto-scroll" checked />
+                            Auto-scroll to latest message
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-settings">Cancel</button>
+                    <button class="btn-primary" id="save-settings">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-spinner"></div>
+            <span>Connecting to agent...</span>
+        </div>
+
+        <!-- Skill Details Modal -->
+        <div id="skill-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Skill Details</h3>
+                    <button class="modal-close" onclick="Modal.hide('skill-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Content will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Modal -->
+        <div id="feedback-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Provide Feedback</h3>
+                    <button class="modal-close" onclick="Modal.hide('feedback-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Content will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="./js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
