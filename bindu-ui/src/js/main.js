@@ -828,6 +828,9 @@ class BinduUI {
             const documentation = await this.apiClient.getSkillDocumentation(skillId);
             console.log('📚 Documentation received:', documentation ? 'success' : 'failed');
             
+            // Parse and format the YAML documentation
+            const formattedDocumentation = this.formatSkillDocumentation(documentation);
+            
             const modalContent = `
                 <div class="skill-modal-content">
                     <div class="skill-modal-header">
@@ -844,8 +847,8 @@ class BinduUI {
                         </div>
                     ` : ''}
                     <div class="skill-documentation">
-                        <h3>Documentation</h3>
-                        <pre><code>${documentation || 'No documentation available'}</code></pre>
+                        <h3>Skill Documentation</h3>
+                        ${formattedDocumentation}
                     </div>
                 </div>
             `;
@@ -876,6 +879,249 @@ class BinduUI {
             console.log('🚨 Showing error modal');
             Modal.show('skill-modal', errorContent);
         }
+    }
+
+    formatSkillDocumentation(documentation) {
+        if (!documentation) return '<p class="no-docs">No documentation available</p>';
+        
+        try {
+            // Parse YAML-like structure and format it
+            const sections = this.parseYamlSections(documentation);
+            
+            let html = '<div class="skill-docs-container">';
+            
+            // Basic Metadata Section
+            if (sections.id || sections.name || sections.version || sections.author) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">📋</span>Basic Metadata</h4>';
+                html += '<div class="doc-grid">';
+                if (sections.id) html += `<div class="doc-item"><strong>ID:</strong> <code>${sections.id}</code></div>`;
+                if (sections.name) html += `<div class="doc-item"><strong>Name:</strong> <span>${sections.name}</span></div>`;
+                if (sections.version) html += `<div class="doc-item"><strong>Version:</strong> <span>${sections.version}</span></div>`;
+                if (sections.author) html += `<div class="doc-item"><strong>Author:</strong> <span>${sections.author}</span></div>`;
+                html += '</div></div>';
+            }
+            
+            // Description Section
+            if (sections.description) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">📝</span>Description</h4>';
+                html += `<div class="doc-description">${sections.description.replace(/\n/g, '<br>')}</div>`;
+                html += '</div>';
+            }
+            
+            // Tags Section
+            if (sections.tags && Array.isArray(sections.tags)) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">🏷️</span>Tags</h4>';
+                html += '<div class="doc-tags">';
+                sections.tags.forEach(tag => {
+                    html += `<span class="doc-tag">${tag}</span>`;
+                });
+                html += '</div></div>';
+            }
+            
+            // Examples Section
+            if (sections.examples && Array.isArray(sections.examples)) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">💡</span>Example Queries</h4>';
+                html += '<div class="doc-examples">';
+                sections.examples.forEach(example => {
+                    html += `<div class="doc-example">"${example}"</div>`;
+                });
+                html += '</div></div>';
+            }
+            
+            // Capabilities Section
+            if (sections.capabilities_detail) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">⚡</span>Capabilities</h4>';
+                html += '<div class="doc-capabilities">';
+                
+                if (sections.capabilities_detail.research_depth) {
+                    const research = sections.capabilities_detail.research_depth;
+                    html += '<div class="capability-subsection">';
+                    html += '<h5>Research Depth</h5>';
+                    if (research.supported) html += '<div class="capability-item">✅ Multi-level research supported</div>';
+                    if (research.levels) html += `<div class="capability-item">📊 Levels: ${research.levels.join(', ')}</div>`;
+                    if (research.sources) html += `<div class="capability-item">🔍 Sources: ${research.sources.join(', ')}</div>`;
+                    html += '</div>';
+                }
+                
+                if (sections.capabilities_detail.report_generation) {
+                    const reports = sections.capabilities_detail.report_generation;
+                    html += '<div class="capability-subsection">';
+                    html += '<h5>Report Generation</h5>';
+                    if (reports.supported) html += '<div class="capability-item">✅ Multiple report styles</div>';
+                    if (reports.styles) html += `<div class="capability-item">📄 Styles: ${reports.styles.join(', ')}</div>`;
+                    html += '</div>';
+                }
+                
+                html += '</div></div>';
+            }
+            
+            // Performance Section
+            if (sections.performance) {
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">📈</span>Performance Metrics</h4>';
+                html += '<div class="doc-grid">';
+                
+                // Handle all performance metrics dynamically
+                Object.keys(sections.performance).forEach(key => {
+                    const value = sections.performance[key];
+                    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    let formattedValue = value;
+                    
+                    // Format specific keys
+                    if (key.includes('time_ms')) {
+                        formattedValue = `${value}ms`;
+                    } else if (key.includes('seconds')) {
+                        formattedValue = `${value}s`;
+                    } else if (key.includes('mb')) {
+                        formattedValue = `${value}MB`;
+                    }
+                    
+                    html += `<div class="doc-item"><strong>${formattedKey}:</strong> <span>${formattedValue}</span></div>`;
+                });
+                
+                html += '</div></div>';
+            }
+            
+            // Use Cases Section
+            if (sections.documentation && sections.documentation.use_cases) {
+                const useCases = sections.documentation.use_cases;
+                html += '<div class="doc-section">';
+                html += '<h4><span class="section-icon">🎯</span>When to Use</h4>';
+                
+                if (useCases.when_to_use && Array.isArray(useCases.when_to_use)) {
+                    html += '<div class="use-cases"><h5>✅ Ideal for:</h5><ul>';
+                    useCases.when_to_use.forEach(useCase => {
+                        html += `<li>${useCase}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                if (useCases.when_not_to_use && Array.isArray(useCases.when_not_to_use)) {
+                    html += '<div class="use-cases"><h5>❌ Avoid for:</h5><ul>';
+                    useCases.when_not_to_use.forEach(useCase => {
+                        html += `<li>${useCase}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            // Raw Documentation (collapsible)
+            html += '<div class="doc-section">';
+            html += '<details class="raw-docs">';
+            html += '<summary><span class="section-icon">🔧</span>View Raw Documentation</summary>';
+            html += `<pre><code>${this.escapeHtml(documentation)}</code></pre>`;
+            html += '</details>';
+            html += '</div>';
+            
+            html += '</div>';
+            return html;
+            
+        } catch (error) {
+            console.warn('Failed to parse documentation, showing raw:', error);
+            return `<div class="raw-docs-fallback">
+                <h4>Documentation</h4>
+                <pre><code>${this.escapeHtml(documentation)}</code></pre>
+            </div>`;
+        }
+    }
+
+    parseYamlSections(yamlText) {
+        const sections = {};
+        const lines = yamlText.split('\n');
+        let currentSection = null;
+        let currentList = null;
+        let multilineValue = null;
+        let multilineKey = null;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            
+            // Skip empty lines and comments
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            
+            // Handle multiline values (| syntax)
+            if (multilineKey && line.startsWith('  ')) {
+                // Continuation of multiline value
+                multilineValue += (multilineValue ? '\n' : '') + line.substring(2);
+                continue;
+            } else if (multilineKey) {
+                // End of multiline value
+                sections[multilineKey] = multilineValue;
+                multilineKey = null;
+                multilineValue = null;
+            }
+            
+            // Check for multiline indicator (|)
+            if (line.match(/^[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*\|$/)) {
+                const key = line.split(':')[0].trim();
+                multilineKey = key;
+                multilineValue = '';
+                continue;
+            }
+            
+            // Check for top-level keys (no indentation)
+            if (line.match(/^[a-zA-Z_][a-zA-Z0-9_]*\s*:/)) {
+                const [key, ...valueParts] = line.split(':');
+                const value = valueParts.join(':').trim();
+                
+                if (value) {
+                    // Simple key-value pair
+                    sections[key.trim()] = value.replace(/^["']|["']$/g, '');
+                } else {
+                    // Start of a section
+                    currentSection = key.trim();
+                    sections[currentSection] = {};
+                }
+                currentList = null;
+                continue;
+            }
+            
+            // Check for list items
+            if (trimmed.startsWith('-')) {
+                const item = trimmed.substring(1).trim();
+                
+                if (currentSection) {
+                    if (!Array.isArray(sections[currentSection])) {
+                        sections[currentSection] = [];
+                    }
+                    sections[currentSection].push(item.replace(/^["']|["']$/g, ''));
+                }
+                continue;
+            }
+            
+            // Check for nested key-value pairs
+            if (currentSection && line.match(/^\s+[a-zA-Z_][a-zA-Z0-9_]*\s*:/)) {
+                const [key, ...valueParts] = line.split(':');
+                const value = valueParts.join(':').trim();
+                
+                if (typeof sections[currentSection] !== 'object' || Array.isArray(sections[currentSection])) {
+                    sections[currentSection] = {};
+                }
+                
+                sections[currentSection][key.trim()] = value.replace(/^["']|["']$/g, '');
+            }
+        }
+        
+        // Handle final multiline value if file ends with it
+        if (multilineKey && multilineValue) {
+            sections[multilineKey] = multilineValue;
+        }
+        
+        return sections;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     renderMessages() {
