@@ -27,7 +27,7 @@ class StateManager {
             
             // Settings
             settings: {
-                agentUrl: 'http://localhost:3773',
+                agentUrl: '/api',  // <--- Changed this
                 authToken: null,
                 autoScroll: true,
             },

@@ -1229,9 +1229,9 @@ class BinduUI {
     }
 
     getAgentBaseUrl() {
-        // Get agent URL from settings (defaults to http://localhost:3773)
+        // Get agent URL from settings (defaults to /api)
         const settings = stateManager.get('settings');
-        return settings.agentUrl || 'http://localhost:3773';
+        return settings.agentUrl || '/api'; // <--- Changed this
     }
 
     // ============================================================================
